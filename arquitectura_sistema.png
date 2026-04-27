@@ -1,0 +1,13 @@
+Internet
+   ↓
+Nginx Frontend
+   ↓
+IIS 7.5 Backend
+   ↓
+ASP.NET Web Apps
+   ↓
+Subdominios (mail / portal / webmail)
+   ↓
+Red interna (10.10.x.x)
+   ↓
+Windows / Active Directory (indicios)
