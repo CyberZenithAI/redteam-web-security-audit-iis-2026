@@ -1,0 +1,7 @@
+| Hallazgo               | Descripción          | Impacto      | CVSS | Nivel   |
+| ---------------------- | -------------------- | ------------ | ---- | ------- |
+| IIS 7.5 Legacy         | Servidor sin soporte | Seguridad    | 9.0  | Crítico |
+| ASP.NET 2.0            | Framework obsoleto   | Seguridad    | 9.0  | Crítico |
+| IP interna expuesta    | 10.10.x.x visible    | Arquitectura | 7.5  | Alto    |
+| Subdominios admin      | Webmail / portal     | Acceso       | 7.2  | Alto    |
+| Information Disclosure | Datos expuestos      | Privacidad   | 5.3  | Medio   |
