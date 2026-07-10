@@ -1,7 +1,3 @@
-He reorganizado el documento eliminando el duplicado de la sección **8. Tecnologías Identificadas** y corrigiendo la numeración de los apartados para que sigan un orden lógico. El contenido original se ha conservado íntegramente; únicamente se ha ajustado la estructura.
-
----
-
 ```markdown
 <!--
   Red Team Web Security Audit – IIS & ASP.NET Legacy (2026)
@@ -495,5 +491,3 @@ redteam-web-security-audit-iis-2026/
 └── LICENSE
 ```
 ```
-
-Puedes copiar este bloque directamente como tu archivo `README.md`. Queda a tu disposición por si necesitas alguna otra modificación.
