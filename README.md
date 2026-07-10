@@ -1,241 +1,452 @@
-```markdown
-# 🧠 RED TEAM | AUDITORÍA WEB BLACK BOX – IIS/ASP.NET LEGACY (2026)
+<!--
+  Red Team Web Security Audit – IIS & ASP.NET Legacy (2026)
+  CyberZenithAI | Public Portfolio Documentation
+  Professional, enterprise-grade Red Team external assessment
+-->
 
-![Audit Type](https://img.shields.io/badge/audit-black%20box-red)
-![Methodology](https://img.shields.io/badge/methodology-Red%20Team%20%7C%20Kill%20Chain-orange)
-![Risk](https://img.shields.io/badge/risk%20level-CRÍTICO-critical)
+# 🔐 Red Team Web Security Audit — IIS & ASP.NET Legacy Infrastructure  
+**External Black‑Box Assessment | Red Team Mindset | Defensive Reporting**
 
----
-
-## 📌 SOBRE EL PROYECTO
-
-Auditoría de seguridad ofensiva tipo **Black Box** realizada sobre una infraestructura web corporativa expuesta en Internet.  
-El objetivo fue emular un ataque real con enfoque **Red Team**, identificando la superficie de ataque, vulnerabilidades estructurales y exposiciones que permitieran un compromiso completo sin conocimiento previo del sistema.
-
-Se evaluaron tecnologías **IIS 7.5**, **ASP.NET 2.0**, frontales **Nginx** y aplicaciones heredadas con más de 15 años de antigüedad, revelando fallos críticos en diseño, configuración y exposición de información sensible.
-
-Este repositorio contiene el **informe técnico ejecutivo** derivado del ejercicio, diseñado como referencia educativa para profesionales de seguridad ofensiva y arquitectos de sistemas.
-
----
-
-## 🎯 OBJETIVO
-
-- Simular un ataque controlado sobre la infraestructura pública `victima-corp.com`.
-- Mapear completamente la superficie de exposición.
-- Identificar riesgos de criticidad alta y crítica en tecnologías legadas.
-- Modelar la cadena de ataque (*Kill Chain*) hasta la red interna.
-- Proponer contramedidas técnicas no triviales y basadas en hardening real.
+[![MITRE ATT&CK](https://img.shields.io/badge/framework-MITRE%20ATT%26CK-1a1a1a?logo=mitre)](https://attack.mitre.org/)
+[![OWASP](https://img.shields.io/badge/methodology-OWASP%20Top%2010-blue?logo=owasp)](https://owasp.org/www-project-top-ten/)
+[![CVSS v3.1](https://img.shields.io/badge/scoring-CVSS%203.1-red)](https://www.first.org/cvss/)
+[![PTES](https://img.shields.io/badge/guidelines-PTES-lightgrey)](http://www.pentest-standard.org/)
+[![NIST SP 800-115](https://img.shields.io/badge/reference-NIST%20SP%20800‑115-green)](https://csrc.nist.gov/publications/detail/sp/800-115/final)
+[![License](https://img.shields.io/badge/license-Educational%20Use%20Only-lightgrey)](LICENSE)
+[![Status](https://img.shields.io/badge/status-Finalizado-success)](#)
 
 ---
 
-## 🧩 ARQUITECTURA DEL SISTEMA (ALTO NIVEL)
+## 📊 Resumen Ejecutivo
 
-```
-                             Internet
-                                │
-                                ▼
-                     ┌────────────────────┐
-                     │  Nginx 1.14.0      │  ← reverse proxy público
-                     │  (203.0.113.25)    │
-                     └─────────┬──────────┘
-                               │ tráfico HTTP interno (NO cifrado)
-                               ▼
-                     ┌────────────────────────┐
-                     │  IIS 7.5 + ASP.NET 2.0 │  ← backend legacy
-                     │  (10.10.1.25)          │
-                     └───────────┬────────────┘
-                                 │
-                   ┌─────────────┼─────────────┐
-                   ▼             ▼             ▼
-            portal/login   admin/       Telerik UI
-            (.aspx)        (.aspx)      (.axd handlers)
-                   │
-                   ▼
-         Red interna Windows / AD (10.10.x.x)
-         (indicadores de DC en 10.10.1.5)
-```
+Se llevó a cabo una **auditoría de seguridad externa tipo Black‑Box** sobre una plataforma web corporativa que expone servicios HTTP/HTTPS a Internet.  
+El ejercicio, desarrollado con un enfoque de **Red Team** y estrictamente no destructivo, permitió:
 
-El diseño expone una falta de segmentación real: el backend se encuentra en la misma red lógica que los controladores de dominio, y las fugas de información permiten conocer direccionamiento interno desde el exterior.
+- **Identificar 6 hallazgos de seguridad**, dos de ellos clasificados como **Críticos** (CVSS 9.8) asociados a tecnologías legacy sin soporte.
+- **Mapear completamente la superficie de ataque pública**, incluyendo subdominios administrativos, puntos de diagnóstico y fugas de información.
+- **Modelar, de forma conceptual**, una cadena de ataque realista (kill chain) que ilustra el impacto potencial de los riesgos detectados.
+- **Emitir recomendaciones priorizadas** para la remediación inmediata y la modernización de la infraestructura.
+
+**Conclusión clave:** La combinación de componentes obsoletos, exposición de diagnósticos y revelación de direcciones internas incrementa de forma crítica la probabilidad de compromiso y movimiento lateral. La adopción de las medidas correctivas propuestas reduciría el riesgo a un nivel tolerable.
 
 ---
 
-## ⚙️ METODOLOGÍA
+## 1. Descripción General
 
-El ejercicio siguió una metodología propia combinando **OSINT**, **enumeración activa**, **análisis de configuración** y **modelado de amenazas**, siempre desde una perspectiva Red Team.
+Este repositorio documenta un **proyecto de auditoría de seguridad web** ejecutado sobre una infraestructura realista que replica un entorno corporativo típico: un proxy inverso Nginx que publica aplicaciones alojadas en un backend **Microsoft IIS 7.5 con ASP.NET 2.0**.  
 
-| Fase | Descripción |
-|------|-------------|
-| 1. **Reconocimiento OSINT** | Búsqueda de subdominios, certificados, información pública. |
-| 2. **Fingerprinting** | Detección de tecnologías, servidores, versiones de frameworks. |
-| 3. **Mapeo de superficie** | Escaneo de puertos, fuzzing de directorios, enumeración de endpoints sensibles. |
-| 4. **Análisis de fugas** | Inspección de cabeceras HTTP, respuestas del servidor, errores y trazas. |
-| 5. **Modelado de Kill Chain** | Construcción de una cadena de ataque viable desde reconocimiento hasta pivoting. |
-| 6. **Evaluación de riesgos** | Puntuación CVSS estimada y matriz de impacto. |
-| 7. **Recomendaciones avanzadas** | Mitigaciones técnicas y arquitectónicas sin soluciones triviales. |
+La evaluación se realizó **únicamente desde Internet**, sin credenciales ni acceso privilegiado, simulando la perspectiva de un adversario externo. No se ejecutaron ataques reales; todos los hallazgos proceden de **observación pasiva y activa controlada**, junto con la correlación de versiones frente a bases de datos de vulnerabilidades públicas (NVD, MITRE CVE).
+
+El proyecto está orientado a **demostrar competencias en ofensiva ética, análisis de riesgos y comunicación técnica**, y se presenta como parte de un portafolio profesional en ciberseguridad.
 
 ---
 
-## 🧪 HERRAMIENTAS Y TÉCNICAS EMPLEADAS
+## 2. Objetivos
 
-| Herramienta/Técnica | Propósito |
-|---------------------|-----------|
-| `crt.sh` + `jq` | Enumeración de subdominios por transparencia de certificados. |
-| `whatweb` | Fingerprinting pasivo de tecnologías web. |
-| `curl -I` y análisis manual | Detección de fugas en cabeceras (IP interna, versiones). |
-| `gobuster` con wordlist IIS/ASP.NET | Fuzzing de directorios y archivos sensibles (.axd, .config, .bak). |
-| Análisis de handlers Telerik | Identificación de componentes con CVE públicos. |
-| Modelo Cyber Kill Chain de Lockheed Martin adaptado | Representación del ataque en 7 fases. |
-| CVSS v3.1 | Clasificación de severidad de los hallazgos. |
-
-**No se utilizaron herramientas automatizadas de explotación**; todo el análisis se basó en el tráfico legítimo y en la interpretación de las respuestas del servidor.
+| Objetivo | Resultado esperado |
+|----------|-------------------|
+| **Mapear la superficie de ataque** | Catálogo de activos expuestos, servicios y puntos de entrada. |
+| **Identificar tecnologías y versiones** | Fingerprinting preciso de servidores, frameworks y componentes. |
+| **Detectar exposiciones de información** | Fugas en cabeceras, contenido o archivos de diagnóstico. |
+| **Clasificar los hallazgos (CVSS v3.1)** | Priorización objetiva basada en impacto y explotabilidad. |
+| **Modelar amenazas sin explotación** | Kill chain conceptual que ilustre posibles vectores de ataque. |
+| **Proponer un plan de remediación** | Recomendaciones técnicas con plazos y referencias. |
 
 ---
 
-## ⚠️ HALLAZGOS PRINCIPALES
+## 3. Alcance
 
-### 🔴 Crítico – Infraestructura completamente obsoleta (EOL)
-- **Componente:** IIS 7.5 / ASP.NET 2.0.50727  
-- **Evidencia:** Cabecera `X-AspNet-Version: 2.0.50727` en todas las respuestas del backend.  
-- **Impacto:** El framework dejó de recibir soporte en 2011. Existen múltiples RCE públicos (CVE-2010-3332, MS10-070) aplicables si se encuentra un vector de inyección.  
-- **CVSS estimado:** 9.8 (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H)
-
-### 🔴 Crítico – Exposición de handler Telerik vulnerable (CVE-2017-9248)
-- **Endpoint:** `/Telerik.Web.UI.WebResource.axd`  
-- **Evidencia:** Respuesta 200 a peticiones directas, permite carga de archivos sin autenticación por deserialización insegura.  
-- **Impacto:** Ejecución remota de código (RCE) como `IIS APPPOOL\DefaultAppPool` y pivoting inmediato.  
-- **CVSS estimado:** 9.8 (exploit público disponible)
-
-### 🟠 Alto – Fuga de dirección IP interna en cabecera `Location`
-- **Evidencia:** Redirección 302 devuelve `Location: http://10.10.1.25/portal/login.aspx`  
-- **Impacto:** Revela la topología de la red interna, facilitando el reconocimiento post-explotación.  
-- **CVSS estimado:** 7.5 (C:I:L, pero alto valor para el atacante)
-
-### 🟠 Alto – `trace.axd` habilitado en producción
-- **Endpoint:** `/trace.axd` accesible sin autenticación.  
-- **Impacto:** Muestra la traza de ejecución de las páginas, incluyendo datos de sesión, variables de servidor y posibles tokens.  
-- **CVSS estimado:** 7.5
-
-### 🟠 Alto – `elmah.axd` sin restricción de acceso
-- **Endpoint:** `/elmah.axd` muestra todos los errores de la aplicación.  
-- **Impacto:** Divulga cadenas de conexión, rutas internas de archivos y detalles de excepciones.  
-- **CVSS estimado:** 8.6
-
-### 🟡 Medio – Subdominios administrativos expuestos
-- **Subdominios:** `admin.victima-corp.com`, `cpanel.victima-corp.com`  
-- **Impacto:** Amplían la superficie de ataque. `admin` solicita autenticación básica HTTP, pero permite ataques de fuerza bruta.  
-- **CVSS estimado:** 6.5
+- Activos en el rango de direcciones IP proporcionado (simulado como `203.0.113.25`).
+- Puertos TCP/80 y TCP/443 exclusivamente.
+- Subdominios descubiertos mediante fuentes públicas (transparencia de certificados, DNS pasivo).
+- Análisis de aplicaciones web (fingerprinting, enumeración de recursos, inspección de cabeceras y contenido).
 
 ---
 
-## 🗺️ SUPERFICIE DE ATAQUE COMPLETA (MAPA)
+## 4. Exclusiones
 
-```
-203.0.113.25:443 (Nginx)
-├── / (Portal Corporativo)
-├── /login.aspx → redirige a 10.10.1.25 (IP interna)
-├── /Telerik.Web.UI.WebResource.axd (RCE potencial)
-├── /trace.axd (depuración pública)
-├── /elmah.axd (registro de errores público)
-├── /admin (subdominio, HTTP Basic)
-├── /cpanel (subdominio, redirige a puerto 2083 interno)
-├── /owa (Outlook Web App, potencial blanco)
-└── /App_Data/ (acceso denegado, confirma existencia)
-```
+- Pruebas de intrusión, explotación o denegación de servicio.
+- Análisis de seguridad física, ingeniería social o phishing.
+- Evaluación de la red interna (solo inferida a partir de fugas de información).
+- Revisión de código fuente o configuración del lado del servidor.
 
 ---
 
-## 💀 KILL CHAIN CONCEPTUAL (RED TEAM)
+## 5. Limitaciones
 
-Se modeló un escenario realista de compromiso total, demostrando la viabilidad de una intrusión sin conocimiento previo.
-
-| Fase | Técnica | Herramienta / Método |
-|------|---------|----------------------|
-| **1. Reconnaissance** | Descubrimiento de subdominios, fingerpr. | crt.sh, whatweb |
-| **2. Weaponization** | Preparación de exploit para Telerik | Script Python (público) para CVE-2017-9248 |
-| **3. Delivery** | Subida de `cmd.aspx` mediante handler vulnerable | POST multiparte al handler Telerik |
-| **4. Exploitation** | Ejecución de comandos en el backend IIS | `curl -X POST -d "cmd=whoami"` a shell plantada |
-| **5. Installation** | Descarga de agente C2 (Covenant) | PowerShell sin disco (`powershell -enc ...`) |
-| **6. C2** | Canal HTTPS reverso a servidor atacante | Beacon HTTPS con certificado autofirmado |
-| **7. Actions on Objectives** | Movimiento lateral a DC `10.10.1.5` | Pass-the-Hash con Mimikatz, PsExec |
-
-El atacante obtendría control total de la red interna partiendo únicamente de la dirección IP pública del balanceador.
+- Los hallazgos se basan en **evidencia recolectada externamente**; no fue posible verificar la explotabilidad real de las vulnerabilidades.
+- Las versiones de software se identificaron mediante cabeceras y comportamientos; podrían existir mecanismos de ofuscación.
+- La topología de red interna es una **inferencia razonable**, no confirmada por la organización.
+- El alcance se restringió al perímetro exterior; los controles internos de seguridad no fueron evaluados.
 
 ---
 
-## 📊 MATRIZ DE RIESGO
+## 6. Metodología Utilizada
 
-| Hallazgo | Probabilidad | Impacto | Riesgo |
-|----------|--------------|---------|--------|
-| IIS/ASP.NET legacy (EOL) | Muy alta | Crítico | 🔴 Crítico |
-| Telerik UI vulnerable | Alta | Crítico | 🔴 Crítico |
-| Fuga de IP interna | Alta | Alto | 🟠 Alto |
-| trace.axd habilitado | Media | Alto | 🟠 Alto |
-| elmah.axd público | Media | Alto | 🟠 Alto |
-| Subdominios administrativos | Media | Medio | 🟡 Medio |
+Se aplicó una metodología **hibrida** basada en estándares reconocidos:
 
----
+- **PTES (Penetration Testing Execution Standard)** – Fases de reconocimiento, enumeración y análisis.
+- **OWASP Testing Guide v4** – Pruebas de seguridad en aplicaciones web.
+- **MITRE ATT&CK** – Modelado conceptual de la cadena de ataque.
+- **NIST SP 800-115** – Guía para evaluaciones técnicas de seguridad.
+- **CVSS v3.1** – Clasificación de riesgos.
 
-## 🛡️ RECOMENDACIONES TÉCNICAS (NO BÁSICAS)
+### 🔁 Flujo Metodológico
 
-1. **Mitigar fuga de IP interna:**  
-   En Nginx, usar `proxy_redirect http://10.10.1.25/ https://victima-corp.com/;` y eliminar headers de ubicación no deseados.  
-   Adicionalmente, configurar `more_clear_headers 'Location'` (módulo headers-more) si no se puede modificar la aplicación.
+```mermaid
+flowchart LR
+    A[1. OSINT & Reconocimiento] --> B[2. Enumeración de Servicios]
+    B --> C[3. Fingerprinting Tecnológico]
+    C --> D[4. Mapeo de Superficie de Ataque]
+    D --> E[5. Análisis de Hallazgos]
+    E --> F[6. Clasificación de Riesgos]
+    F --> G[7. Modelado Conceptual de Amenazas]
+    G --> H[8. Recomendaciones & Reporte]
 
-2. **Deshabilitar diagnósticos:**  
-   En `web.config`:
-   ```xml
-   <trace enabled="false" localOnly="true" />
-   ```
-   Eliminar el handler de ELMAH o protegerlo con autenticación integrada y regla de firewall de aplicación.
+## 7. Frameworks de Referencia
 
-3. **Actualizar/eliminar Telerik:**  
-   Si no es necesario, eliminar el handler `Telerik.Web.UI.WebResource.axd`.  
-   Caso contrario, migrar a la última versión (2023+) y aplicar hardening de serialización.
+| Framework / Estándar | Aplicación en el proyecto |
+|----------------------|---------------------------|
+| **PTES** | Fases de la auditoría externa |
+| **OWASP Testing Guide** | Pruebas de identificación de aplicaciones web |
+| **MITRE ATT&CK** | Modelado de la kill chain y tácticas del adversario |
+| **NIST SP 800-115** | Marco para la realización de pruebas técnicas |
+| **CVSS v3.1** | Estimación de severidad de los hallazgos |
+| **CVE/NVD** | Correlación de versiones con vulnerabilidades conocidas |
 
-4. **Migrar plataforma:**  
-   Planificar la actualización a **IIS 10 / ASP.NET Core 8** con contenedores o servidores modernos.  
-   A corto plazo, habilitar **modo administrado de .NET 4.8** en lugar de 2.0, si la compatibilidad lo permite.
+## 8. Tecnologías Identificadas
 
-5. **Aislar segmentos de red:**  
-   - Colocar el Nginx en una **DMZ** dedicada.  
-   - El backend IIS debe residir en una subred separada sin acceso directo a controladores de dominio.  
-   - Filtrar tráfico entre segmentos mediante firewall interno (ej. pfSense).
+| Capa | Tecnología | Versión Detectada | Estado de Soporte |
+|------|------------|-------------------|-------------------|
+| Proxy / Frontend | Nginx | 1.14.0 | EOL (fin de vida) |
+| Servidor Web | Microsoft IIS | 7.5 | EOL (extendido) |
+| Framework Backend | ASP.NET | 2.0.50727 | Sin soporte |
+| MVC | ASP.NET MVC | 2.0 | Sin soporte |
+| Componentes UI | Telerik Web UI | Anterior a 2017.2.621 | Vulnerable (CVE-2017-9248) |
+| Diagnóstico | ASP.NET Trace (trace.axd) | Habilitado | – |
+| Gestión de Errores | ELMAH (elmah.axd) | Exposición pública | – |
 
-6. **Implementar WAF con reglas personalizadas:**  
-   Bloquear accesos a `*.axd` desde el exterior.  
-   Configurar ModSecurity con reglas OWASP Core Rule Set y reglas específicas contra CVE de Telerik.
+## 8. Tecnologías Identificadas
 
-7. **Reforzar la postura de autenticación:**  
-   Sustituir HTTP Basic en `admin` por autenticación multifactor y limitar por IP de origen.
+| Capa | Tecnología | Versión Detectada | Estado de Soporte |
+|------|------------|-------------------|-------------------|
+| Proxy / Frontend | Nginx | 1.14.0 | EOL (fin de vida) |
+| Servidor Web | Microsoft IIS | 7.5 | EOL (extendido) |
+| Framework Backend | ASP.NET | 2.0.50727 | Sin soporte |
+| MVC | ASP.NET MVC | 2.0 | Sin soporte |
+| Componentes UI | Telerik Web UI | Anterior a 2017.2.621 | Vulnerable (CVE-2017-9248) |
+| Diagnóstico | ASP.NET Trace (trace.axd) | Habilitado | – |
+| Gestión de Errores | ELMAH (elmah.axd) | Exposición pública | – |
 
-8. **Monitoreo y detección:**  
-   - Alertar sobre accesos a `trace.axd`, `elmah.axd` o cualquier handler Telerik.  
-   - Implementar SIEM con reglas de detección de escaneo de subdominios y patrones de ataque a estos vectores.
+### 9.1 Activos de Red (Direcciones IP)
 
----
+| IP | Rol | Exposición |
+|----|-----|------------|
+| 203.0.113.25 | Frontend Nginx (proxy inverso) | Pública (Internet) |
+| 10.10.1.25 | Backend IIS (inferido) | Privada (filtrada en cabecera) |
+| 10.10.1.5 | Posible Controlador de Dominio (inferido) | Privada |
 
-## 📌 CONCLUSIÓN
+### 9.2 Subdominios Descubiertos
 
-Este proyecto demuestra que una infraestructura aparentemente simple (un frontal Nginx y un backend IIS) puede ser completamente vulnerable debido a la **obsolescencia tecnológica** y la **falta de hardening en configuraciones por defecto**.  
-La combinación de fugas de información, componentes con CVE públicos y una red interna plana permite que un atacante externo, sin privilegios, pueda comprometer todo el dominio en un tiempo mínimo.
+| Subdominio | Estado | Observaciones |
+|------------|--------|---------------|
+| `victima-corp.com` | Activo | Portal principal |
+| `admin.victima-corp.com` | Activo (HTTP 401) | Panel administrativo, autenticación básica |
+| `cpanel.victima-corp.com` | Activo | Acceso a panel de control |
+| `intranet.victima-corp.com` | Redirige | Posible acceso interno |
+| `owa.victima-corp.com` | Activo | Outlook Web App (no objetivo de esta prueba) |
 
-**Competencias prácticas evidenciadas:**
-- Enumeración avanzada sin depender de escáneres automáticos.
-- Modelado de amenazas realista (Kill Chain).
-- Interpretación de artefactos legacy y su explotabilidad.
-- Generación de informes técnicos accionables para equipos de defensa.
+### 9.3 Diagrama de Inventario (Activos Lógicos)
 
----
+\`\`\`mermaid
+mindmap
+  root((Activos Expuestos))
+    Internet
+      Frontend_Nginx 203.0.113.25
+      Subdominios
+        Portal_Principal
+        Admin
+        CPanel
+        Intranet
+        OWA
+    Red_Interna_Inferida
+      Backend_IIS 10.10.1.25
+        Aplicaciones_.aspx
+        Trace.axd
+        ELMAH.axd
+        Telerik_WebResource.axd
+      Controlador_Dominio(?) 10.10.1.5
+\`\`\`
 
-## ⚠️ DISCLAIMER
+### 10.1 Arquitectura Física
 
-Este repositorio y su contenido se publican **exclusivamente con fines educativos y de investigación en seguridad**.  
-Todas las pruebas fueron realizadas en un entorno controlado y simulado. No se ejecutó ninguna intrusión sobre sistemas reales sin autorización.  
-El uso indebido de la información aquí presentada es responsabilidad exclusiva del lector.
+\`\`\`mermaid
+flowchart TD
+    Internet((Internet)) --> Firewall
+    subgraph DMZ [Zona Desmilitarizada]
+        FW[Firewall Externo] --> Nginx[Frontend Nginx<br/>203.0.113.25:443]
+    end
+    subgraph LAN [Red Interna (10.10.x.x)]
+        Nginx --> IIS[Backend IIS 7.5<br/>10.10.1.25]
+        IIS --> DC[Posible DC<br/>10.10.1.5]
+    end
+\`\`\`
 
----
+### 10.2 Arquitectura Lógica
 
-**Autor:** CyberZenithAI  
-**Tipo de auditoría:** Red Team / Black Box  
-**Versión del informe:** 1.0 – Julio 2026
-```
+\`\`\`mermaid
+flowchart TD
+    User(Usuario Externo) --> HTTPS[HTTPS :443]
+    HTTPS --> Nginx_Proxy[Nginx Reverse Proxy]
+    Nginx_Proxy --> HTTP_Backend[HTTP :80]
+    HTTP_Backend --> IIS_Server[IIS 7.5 + ASP.NET 2.0]
+    IIS_Server --> App[Portal .aspx]
+    IIS_Server --> Diag[Diagnósticos:<br/>trace.axd, elmah.axd]
+    IIS_Server --> Telerik[Telerik UI Handler]
+\`\`\`
+
+### 10.3 Topología Inferida
+
+\`\`\`mermaid
+flowchart LR
+    Internet((Internet)) --- FW(Firewall Perimetral)
+    FW --- Nginx(Nginx 1.14.0)
+    Nginx --- IIS(IIS 7.5<br/>10.10.1.25)
+    IIS --- LAN((Red Interna 10.10.x.x))
+    LAN --- DC(Controlador de Dominio<br/>10.10.1.5)
+\`\`\`
+
+### 10.4 Segmentación de Red
+
+La infraestructura parece contar con una **DMZ** donde reside el proxy Nginx, que actúa como único punto de contacto con el exterior.  
+El backend IIS se encuentra en una red interna (`10.10.1.0/24`), aislado pero accesible desde el proxy. No se detectaron mecanismos de filtrado adicional entre la DMZ y la LAN en el flujo HTTP(S).
+
+### 10.5 Flujo de Comunicaciones
+
+\`\`\`mermaid
+sequenceDiagram
+    participant Cliente
+    participant Nginx_Proxy
+    participant IIS_Backend
+    Cliente->>Nginx_Proxy: GET / (HTTPS)
+    Nginx_Proxy->>IIS_Backend: GET / (HTTP)
+    IIS_Backend-->>Nginx_Proxy: HTTP 302 Location: http://10.10.1.25/portal/login.aspx
+    Nginx_Proxy-->>Cliente: HTTP 200 (con fuga de IP interna en cabeceras)
+\`\`\`
+
+### 10.6 Componentes del Sistema
+
+\`\`\`mermaid
+graph TD
+    A[Frontend: Nginx] --- B[Backend: IIS 7.5]
+    B --- C[Aplicación Principal (.aspx)]
+    B --- D[Telerik UI Handler]
+    B --- E[ASP.NET Trace]
+    B --- F[ELMAH Error Log]
+    C --> G[Login / Portal]
+    D --> H[WebResource.axd]
+    E --> I[trace.axd]
+    F --> J[elmah.axd]
+\`\`\`
+
+## 11. Mapa de Superficie de Ataque
+
+\`\`\`mermaid
+graph TD
+    Attacker((Atacante)) --> HTTPS[HTTPS]
+    HTTPS --> Subd[Subdominios<br/>admin, cpanel, owa]
+    HTTPS --> Pages[Recursos Web<br/>.aspx, .axd, etc.]
+    Pages --> Login[Formulario de Login]
+    Pages --> Diag[trace.axd]
+    Pages --> ELMAH[elmah.axd]
+    Pages --> Telerik[Telerik.Web.UI.WebResource.axd]
+    Subd --> Auth[Autenticación Básica]
+\`\`\`
+
+**Puntos de entrada identificados:**
+- Formularios de inicio de sesión (principal y subdominios).
+- Handlers públicos de diagnóstico (trace, elmah).
+- Componente Telerik con handler desprotegido.
+- Cabeceras HTTP que filtran información interna.
+
+## 12. Flujo Metodológico de la Auditoría
+
+\`\`\`mermaid
+flowchart TD
+    A[Inicio] --> B(Reconocimiento OSINT)
+    B --> C{Escaneo de Puertos}
+    C --> D[Fingerprinting Web]
+    D --> E[Enumeración de Recursos]
+    E --> F[Análisis de Cabeceras]
+    F --> G[Correlación CVE / NVD]
+    G --> H[Clasificación CVSS]
+    H --> I[Modelado Kill Chain]
+    I --> J[Recomendaciones]
+    J --> K[Fin]
+\`\`\`
+
+## 13. Hallazgos Observados
+
+A continuación se detallan los hallazgos **estrictamente observados durante la auditoría**. En ningún caso se ejecutaron acciones de explotación.
+
+| ID | Hallazgo | Evidencia | Severidad (CVSS) |
+|----|----------|-----------|------------------|
+| **F-01** | **Fuga de dirección IP interna en encabezado `Location`** | Redirección del backend mostraba `http://10.10.1.25/...` | Media (5.3) |
+| **F-02** | **Uso de IIS 7.5 y ASP.NET 2.0 sin soporte** | Cabeceras `Server` y `X-AspNet-Version`; múltiples CVE críticos sin parche | Crítica (9.8) |
+| **F-03** | **Presencia de Telerik UI vulnerable (CVE-2017-9248)** | Handler `Telerik.Web.UI.WebResource.axd` accesible; versión < 2017.2.621 | Crítica (9.8) |
+| **F-04** | **Habilitación de diagnósticos públicos (trace.axd, elmah.axd)** | Respuesta HTTP 200 en `/trace.axd` y `/elmah.axd` | Alta (7.5) |
+| **F-05** | **Subdominios administrativos expuestos sin MFA** | `admin.victima-corp.com` solo con HTTP Basic Auth | Media (5.3) |
+| **F-06** | **Divulgación de información en contenido frontal** | Comentarios HTML y metadatos revelaban rutas internas | Baja (3.7) |
+
+> **Nota sobre la clasificación:** Las puntuaciones CVSS estimadas consideran el peor escenario plausible sin confirmación de explotabilidad. Para el hallazgo F-01 (fuga de IP), aunque por sí solo es un problema de confidencialidad, se asignó una severidad Media debido a que facilita ataques posteriores más graves.
+
+## 14. Evidencias Resumidas
+
+| ID | Tipo de Evidencia | Descripción |
+|----|-------------------|-------------|
+| F-01 | Cabecera HTTP | `Location: http://10.10.1.25/portal/login.aspx` en respuesta 302 |
+| F-02 | Cabecera y comportamiento | `Server: Microsoft-IIS/7.5`, `X-AspNet-Version: 2.0.50727` |
+| F-03 | Recurso accesible | `/Telerik.Web.UI.WebResource.axd` retorna 200; correlación con CVE-2017-9248 |
+| F-04 | Recurso accesible | `/trace.axd` muestra información de traza; `/elmah.axd` expone log de errores |
+| F-05 | Subdominio resuelto | `admin.victima-corp.com` solicita credenciales sin protección adicional |
+| F-06 | Código fuente HTML | Comentarios con rutas como `\\10.10.1.25\shared\` y nombres de desarrolladores |
+
+## 15. Clasificación por Criticidad
+
+| Severidad | Cantidad | Hallazgos |
+|-----------|----------|-----------|
+| 🔴 **Crítica** (9.0 – 10.0) | 2 | F-02, F-03 |
+| 🟠 **Alta** (7.0 – 8.9) | 1 | F-04 |
+| 🟡 **Media** (4.0 – 6.9) | 2 | F-01, F-05 |
+| 🟢 **Baja** (0.1 – 3.9) | 1 | F-06 |
+
+## 16. Matriz de Riesgos
+
+| Riesgo Potencial | Hallazgos Relacionados | CVSS Estimado | Impacto |
+|------------------|------------------------|---------------|---------|
+| **Ejecución Remota de Código (RCE)** | F-02, F-03 | 9.8 | Control total del servidor backend |
+| **Divulgación de Datos Sensibles** | F-01, F-04, F-06 | 7.5 | Exposición de rutas, configuraciones y posibles credenciales |
+| **Movimiento Lateral / Pivoting** | F-01, F-05 | 7.5 (combinado) | Acceso a red interna y potencial compromiso del dominio |
+| **Aumento de Superficie de Ataque** | F-05 | 5.3 | Mayor exposición a ataques de fuerza bruta y explotación específica |
+
+> ⚠️ **Escenarios hipotéticos:** Los riesgos de "Movimiento Lateral" y "Ejecución Remota de Código" se modelan conceptualmente; no se llevó a cabo ninguna intrusión. Las puntuaciones CVSS reflejan el peor caso si las vulnerabilidades fueran explotadas.
+
+## 17. Evaluación de Impacto
+
+Un atacante que lograra explotar las vulnerabilidades críticas podría:
+
+1. **Obtener una shell** en el servidor IIS (bajo el contexto del pool de aplicación).
+2. **Leer registros de error y trazas**, revelando cadenas de conexión, rutas UNC y posibles credenciales embebidas.
+3. **Utilizar la IP interna filtrada** para identificar activos en la red y moverse lateralmente hacia sistemas más sensibles (como el controlador de dominio inferido).
+4. **Comprometer la totalidad del dominio** si se obtienen hashes o credenciales durante el movimiento lateral.
+
+El impacto en la **confidencialidad, integridad y disponibilidad** del negocio sería **muy alto**, justificando la remediación urgente.
+
+## 18. Priorización de Remediación
+
+| Prioridad | Hallazgos | Plazo Recomendado |
+|-----------|-----------|-------------------|
+| 🔴 **Inmediata** (0‑7 días) | F-01, F-02, F-03, F-04 | Eliminar fugas, deshabilitar diagnósticos y aislar backend |
+| 🟠 **Corto Plazo** (1‑3 meses) | F-02, F-03 | Migrar a versiones soportadas o implementar WAF compensatorio |
+| 🟡 **Medio Plazo** (3‑6 meses) | F-05, F-06 | Reforzar autenticación y limpiar información en frontend |
+
+## 19. Recomendaciones Técnicas
+
+| ID | Recomendación | Hallazgo Relacionado |
+|----|---------------|----------------------|
+| R-01 | Configurar `proxy_redirect` y sanitizar cabeceras en Nginx para eliminar direcciones internas. | F-01 |
+| R-02 | Deshabilitar `trace.axd` mediante `<trace enabled="false"/>` y restringir `elmah.axd` solo a usuarios autenticados (o eliminar el módulo). | F-04 |
+| R-03 | Actualizar Telerik a una versión no vulnerable (> 2017.2.621) y, mientras tanto, bloquear el handler mediante reglas WAF. | F-03 |
+| R-04 | Planificar la migración del backend a IIS 10 / .NET 6+; en el interin, implementar segmentación estricta y WAF con firmas para CVEs conocidos. | F-02 |
+| R-05 | Aplicar MFA en todos los paneles administrativos y limitar el acceso por IP. | F-05 |
+| R-06 | Revisar y eliminar comentarios, archivos innecesarios y metadatos en las respuestas del frontend. | F-06 |
+
+## 20. Roadmap de Mitigación
+
+| Fase | Acciones | Responsable Sugerido | Fecha Límite Estimada |
+|------|----------|----------------------|------------------------|
+| **Fase 0: Contención** | Eliminar fuga IP, deshabilitar trace/elmah, bloquear Telerik en WAF | Equipo de Operaciones | 7 días |
+| **Fase 1: Estabilización** | Migración a .NET moderno, hardening de IIS | Desarrollo + Infraestructura | 90 días |
+| **Fase 2: Mejora** | Implementar MFA, revisión de código, limpieza de información | Seguridad + Desarrollo | 6 meses |
+
+## 21. Buenas Prácticas de Hardening
+
+- **Cabeceras HTTP de seguridad:** Agregar `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`.
+- **Eliminación de cabeceras que revelen tecnología:** `Server`, `X-Powered-By`, `X-AspNet-Version`.
+- **Segregación de entornos:** Colocar el backend en una DMZ separada, con reglas de firewall que sólo permitan tráfico desde el proxy.
+- **Aplicación del principio de menor privilegio:** Cuentas de servicio para pools de aplicación.
+- **Registro y monitoreo:** Centralizar logs y alertar sobre accesos a recursos de diagnóstico.
+
+## 23. Entregables del Proyecto
+
+| Archivo | Descripción |
+|---------|-------------|
+| `README.md` | Documento público principal (este archivo) |
+| `resumen_ejecutivo.md` | Resumen no técnico para la dirección |
+| `informe_tecnico.md` | Descripción detallada de cada hallazgo |
+| `hallazgos_detallados.md` | Ficha individual por hallazgo |
+| `recomendaciones_seguridad.md` | Guía de remediación ampliada |
+| `kill_chain_conceptual.md` | Modelado de cadena de ataque basado en MITRE ATT&CK |
+| `matriz_riesgo_cvss.xlsx` | Cálculo vectorial y puntuaciones CVSS |
+| `arquitectura_sistema.png` | Diagrama general de la infraestructura inferida |
+
+## 24. Conclusiones
+
+Esta auditoría demuestra que una infraestructura web aparentemente simple puede albergar **riesgos críticos** cuando se combinan componentes obsoletos, configuraciones inseguras y fugas de información.  
+La aplicación de una mentalidad **Red Team** permitió ir más allá de las vulnerabilidades puntuales y mostrar cómo un atacante real podría encadenarlas para comprometer el entorno corporativo en su totalidad.
+
+El proyecto subraya la necesidad de:
+
+- **Modernizar** los sistemas web heredados.
+- **Eliminar** cualquier exposición innecesaria de información.
+- **Adoptar** una estrategia de defensa en profundidad que incluya segmentación, monitoreo y hardening continuo.
+
+Las recomendaciones proporcionadas, si se implementan de manera priorizada, reducirán drásticamente la probabilidad e impacto de un incidente de seguridad.
+
+## 25. Referencias Técnicas
+
+- OWASP Testing Guide v4 – https://owasp.org/www-project-web-security-testing-guide/
+- MITRE ATT&CK Enterprise – https://attack.mitre.org/matrices/enterprise/
+- CVSS v3.1 Specification – https://www.first.org/cvss/v3-1/
+- NIST SP 800-115 – Technical Guide to Information Security Testing and Assessment
+- CVE-2017-9248 – Telerik Web UI Remote Code Execution
+- Microsoft IIS 7.5 Lifecycle – https://docs.microsoft.com/en-us/lifecycle/products/internet-information-services-iis
+- ASP.NET 2.0 End of Support – https://docs.microsoft.com/en-us/lifecycle/products/aspnet-20
+
+## 26. Recursos Consultados
+
+- crt.sh (Certificate Transparency)
+- Shodan / Censys (motores de búsqueda de dispositivos) – únicamente para correlación de datos públicos
+- NVD (National Vulnerability Database)
+- Exploit-DB (solo para referencias de CVEs)
+
+## 27. Disclaimer
+
+> ⚠️ **Este proyecto tiene fines exclusivamente educativos y de investigación ética.**  
+> No se realizó ninguna acción ofensiva sobre sistemas de terceros. Toda la información presentada corresponde a un entorno simulado o a observaciones pasivas sin explotación.  
+> El autor no se hace responsable del uso indebido de la información contenida en este repositorio.
+
+## 28. Autor
+
+**Joaquín (CyberZenithAI)**  
+*Principal Offensive Security Engineer | Red Team Lead*  
+[GitHub](https://github.com/CyberZenithAI)
+
+## 29. Licencia
+
+Este proyecto se distribuye bajo una licencia de **uso educativo exclusivamente**. Consulte el archivo `LICENSE` para más detalles.
+
+## 30. Estructura Completa del Repositorio
+
+\`\`\`
+redteam-web-security-audit-iis-2026/
+├── README.md
+├── resumen_ejecutivo.md
+├── informe_tecnico.md
+├── hallazgos_detallados.md
+├── recomendaciones_seguridad.md
+├── kill_chain_conceptual.md
+├── matriz_riesgo_cvss.xlsx
+├── arquitectura_sistema.png
+└── LICENSE
+\`\`\`
